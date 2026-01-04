@@ -1,0 +1,30 @@
+{
+  "Index": {
+    "title": "Jot Diary",
+    "placeholder": "What's on your mind?",
+    "search": "Search moments...",
+    "aiSearch": "Ask AI about your diary...",
+    "aiMode": "AI Mode",
+    "timeline": "Timeline",
+    "categories": "Categories",
+    "settings": "Settings",
+    "exportMd": "Export Markdown",
+    "exportTxt": "Export Text",
+    "listening": "Listening...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "today": "Today",
+    "autoCategorized": "AI auto-categorized",
+    "return": "Return",
+    "noResults": "No results found"
+  },
+  "Categories": {
+    "TODO": "To-do",
+    "DREAM": "Dream",
+    "BEAUTIFUL": "Beautiful",
+    "REFLECTION": "Reflection",
+    "GRATITUDE": "Gratitude",
+    "NORMAL": "Daily"
+  }
+}
+

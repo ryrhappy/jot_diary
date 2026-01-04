@@ -1,0 +1,30 @@
+{
+  "Index": {
+    "title": "Jot Diary",
+    "placeholder": "呼吸般记录...",
+    "search": "查找内容...",
+    "aiSearch": "询问 AI...",
+    "aiMode": "AI 模式",
+    "timeline": "时间轴",
+    "categories": "分类概览",
+    "settings": "应用管理",
+    "exportMd": "导出 Markdown",
+    "exportTxt": "导出纯文本",
+    "listening": "正在聆听...",
+    "cancel": "取消录音",
+    "save": "满意并保存",
+    "today": "今天",
+    "autoCategorized": "AI 自动分类",
+    "return": "返回",
+    "noResults": "暂无匹配内容"
+  },
+  "Categories": {
+    "TODO": "待办事项",
+    "DREAM": "我的梦想",
+    "BEAUTIFUL": "美好事情",
+    "REFLECTION": "需要反思",
+    "GRATITUDE": "感恩的事",
+    "NORMAL": "日常记录"
+  }
+}
+

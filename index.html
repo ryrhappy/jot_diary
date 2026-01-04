@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jot Diary - 极简流式日记</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #fcfcfc;
+            color: #1a1a1a;
+        }
+
+        .serif {
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .timeline-line {
+            position: absolute;
+            left: 88px;
+            top: 240px;
+            bottom: 0;
+            width: 1px;
+            background: #f1f5f9;
+        }
+
+        /* 动画过渡 */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .animate-in {
+            animation: slideInRight 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.4); }
+            100% { box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+        }
+    </style>
+</head>
+<body class="selection:bg-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        /**
+         * @typedef {Object} DiaryEntry
+         * @property {string} id
+         * @property {string} content
+         * @property {string} time
+         * @property {string} category
+         */
+
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // 定义分类配置
+        const CATEGORIES = {
+            TODO: { name: '待办事项', icon: 'check-circle', color: 'text-orange-400', keywords: ['待办', '要去', '完成', '任务', '买'] },
+            DREAM: { name: '我的梦想', icon: 'sparkles', color: 'text-purple-400', keywords: ['梦想', '以后', '想成为', '愿景', '期待'] },
+            BEAUTIFUL: { name: '美好事情', icon: 'sun', color: 'text-yellow-400', keywords: ['美好', '开心', '快乐', '阳光', '享受'] },
+            REFLECTION: { name: '需要反思', icon: 'refresh-cw', color: 'text-blue-400', keywords: ['反思', '错误', '教训', '改进', '后悔'] },
+            GRATITUDE: { name: '感恩的事', icon: 'heart', color: 'text-red-400', keywords: ['感恩', '感谢', '幸好', '谢谢'] },
+            NORMAL: { name: '日常记录', icon: 'message-square', color: 'text-slate-300', keywords: [] }
+        };
+
+        /**
+         * 分类卡片组件
+         */
+        function CategoryCard({ id, name, icon, count, color, onClick }) {
+            return (
+                <div 
+                    onClick={onClick}
+                    className="p-5 bg-white border border-slate-100 rounded-3xl hover:border-blue-200 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group"
+                >
+                    <div className="flex justify-between items-start mb-4">
+                        <div className={`p-3 bg-slate-50 rounded-2xl group-hover:bg-blue-50 transition-colors`}>
+                            <i data-lucide={icon} className={`w-5 h-5 ${color}`}></i>
+                        </div>
+                        <span className="text-xs font-bold text-slate-300 group-hover:text-blue-400">{count}</span>
+                    </div>
+                    <h4 className="text-sm font-medium text-slate-700">{name}</h4>
+                </div>
+            );
+        }
+
+        /**
+         * JotDiary 主组件
+         */
+        function JotDiary() {
+            const [view, setView] = useState('timeline'); // 'timeline', 'categories', 'search'
+            const [selectedCategory, setSelectedCategory] = useState(null);
+            const [entries, setEntries] = useState([
+                { id: '1', content: '今天在思南路散步，看到阳光洒在梧桐树上，真是美好事情。', time: '14:20', date: '2026-01-04', category: 'BEAUTIFUL' },
+                { id: '2', content: '待办：下午三点记得给张总回个电话确认 RAG 方案。', time: '10:30', date: '2026-01-04', category: 'TODO' },
+                { id: '3', content: '读了半本《禅与摩托车维修艺术》，感恩能有这样宁静的早晨。', time: '08:15', date: '2026-01-04', category: 'GRATITUDE' },
+                { id: '4', content: '我的梦想是能在十年后建立一个完全去中心化的个人知识库。', time: '23:45', date: '2026-01-03', category: 'DREAM' },
+                { id: '5', content: '下午开会语气太冲了，需要反思沟通方式。', time: '18:20', date: '2026-01-03', category: 'REFLECTION' }
+            ]);
+            const [inputValue, setInputValue] = useState('');
+            const [isSttActive, setIsSttActive] = useState(false);
+            const [sttText, setSttText] = useState('');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [isAiMode, setIsAiMode] = useState(false);
+            const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+            const inputRef = useRef(null);
+
+            // 自动打标签逻辑
+            const autoTag = (text) => {
+                for (const [key, config] of Object.entries(CATEGORIES)) {
+                    if (config.keywords.some(k => text.includes(k))) return key;
+                }
+                return 'NORMAL';
+            };
+
+            // 统计分类
+            const categoryStats = useMemo(() => {
+                const stats = {};
+                Object.keys(CATEGORIES).forEach(k => stats[k] = 0);
+                entries.forEach(e => { if (stats[e.category] !== undefined) stats[e.category]++ });
+                return stats;
+            }, [entries]);
+
+            // 模拟语音转文字逻辑
+            useEffect(() => {
+                let interval;
+                if (isSttActive) {
+                    setSttText('');
+                    const mockSentences = [
+                        "我正在", "我正在尝试", "我正在尝试使用语音", "我正在尝试使用语音录入一段日记", 
+                        "我正在尝试使用语音录入一段日记，这感觉", "我正在尝试使用语音录入一段日记，这感觉非常自然。"
+                    ];
+                    let i = 0;
+                    interval = setInterval(() => {
+                        if (i < mockSentences.length) {
+                            setSttText(mockSentences[i]);
+                            i++;
+                        } else {
+                            clearInterval(interval);
+                        }
+                    }, 800);
+                }
+                return () => clearInterval(interval);
+            }, [isSttActive]);
+
+            // 初始化图标
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [entries, isAiMode, isDrawerOpen, view, isSttActive, sttText]);
+
+            // 自动聚焦
+            useEffect(() => {
+                if (view === 'timeline' && !isSttActive && inputRef.current) inputRef.current.focus();
+            }, [view, isSttActive]);
+
+            const handleSend = (text = inputValue) => {
+                const targetText = typeof text === 'string' ? text : inputValue;
+                if (!targetText.trim()) return;
+                const now = new Date();
+                const newEntry = {
+                    id: Date.now().toString(),
+                    content: targetText,
+                    time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
+                    date: now.toISOString().split('T')[0],
+                    category: autoTag(targetText)
+                };
+                setEntries([newEntry, ...entries]);
+                if (isSttActive) {
+                    setIsSttActive(false);
+                    setSttText('');
+                } else {
+                    setInputValue('');
+                }
+            };
+
+            const handleExport = (format) => {
+                const content = entries.map(e => `[${e.date} ${e.time}] [${CATEGORIES[e.category].name}]\n${e.content}\n`).join('\n---\n\n');
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `Jot_Diary_${new Date().toISOString().split('T')[0]}.${format}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            const filteredEntries = useMemo(() => {
+                let result = entries;
+                if (searchQuery) {
+                    result = result.filter(e => e.content.toLowerCase().includes(searchQuery.toLowerCase()));
+                }
+                if (selectedCategory) {
+                    result = result.filter(e => e.category === selectedCategory);
+                }
+                return result;
+            }, [entries, searchQuery, selectedCategory]);
+
+            // 日期显示逻辑
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+            const weekday = today.toLocaleDateString('zh-CN', { weekday: 'long' });
+
+            return (
+                <div className="relative min-h-screen flex flex-col items-center pb-24">
+                    {/* 顶部应用名称 & 搜索 */}
+                    <header className="fixed top-0 w-full z-40 flex flex-col items-center p-6 gap-4">
+                        <div className="w-full max-w-2xl flex justify-between items-center px-2">
+                            <h1 className="text-lg font-bold tracking-[0.2em] text-slate-800 flex items-center gap-2">
+                                <span className="p-1.5 bg-slate-800 rounded-lg"><i data-lucide="feather" className="w-3.5 h-3.5 text-white"></i></span>
+                                JOT DIARY
+                            </h1>
+                            <div className="flex gap-4 items-center">
+                                <button onClick={() => {setView('categories'); setSelectedCategory(null)}} className={`p-2 rounded-full transition-colors ${view === 'categories' ? 'bg-slate-100 text-blue-500' : 'text-slate-400'}`}>
+                                    <i data-lucide="grid" className="w-5 h-5"></i>
+                                </button>
+                                <button onClick={() => setIsDrawerOpen(true)} className="text-slate-400 hover:text-slate-600">
+                                    <i data-lucide="menu" className="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="w-full max-w-2xl glass rounded-2xl border border-slate-200/60 shadow-sm flex items-center px-4 py-2">
+                            <i data-lucide={isAiMode ? "sparkles" : "search"} className={`w-4 h-4 ${isAiMode ? 'text-blue-500' : 'text-slate-300'}`}></i>
+                            <input 
+                                type="text" 
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    if (e.target.value && view !== 'search') setView('search');
+                                    if (!e.target.value && view === 'search') setView('timeline');
+                                }}
+                                placeholder={isAiMode ? "询问 AI..." : "查找内容..."}
+                                className="flex-1 bg-transparent border-none focus:outline-none px-3 text-sm font-light text-slate-700 placeholder:text-slate-200"
+                            />
+                            {isAiMode && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">AI ON</span>}
+                        </div>
+                    </header>
+
+                    {/* 主体内容 */}
+                    <main className="w-full max-w-3xl mt-48 px-6 relative">
+                        {view === 'timeline' && (
+                            <div className="fade-up">
+                                {/* 醒目的日期显示 */}
+                                <div className="mb-16 text-center md:text-left flex flex-col md:flex-row md:items-baseline gap-4">
+                                    <span className="text-6xl md:text-7xl font-light serif text-slate-200 leading-none">
+                                        {today.getDate().toString().padStart(2, '0')}
+                                    </span>
+                                    <div className="flex flex-col">
+                                        <span className="text-xl font-bold text-slate-800">{dateStr}</span>
+                                        <span className="text-sm font-medium text-slate-300 tracking-[0.2em] uppercase">{weekday}</span>
+                                    </div>
+                                </div>
+
+                                <div className="relative">
+                                    <div className="timeline-line hidden md:block"></div>
+                                    <div className="flex flex-col gap-16">
+                                        {entries.map((entry) => (
+                                            <div key={entry.id} className="flex flex-col md:flex-row gap-4 md:gap-0 group">
+                                                <div className="md:w-32 flex-shrink-0 pt-1 flex flex-col gap-2">
+                                                    <span className="text-xs font-medium text-slate-300 tracking-wider group-hover:text-slate-400 transition-colors">
+                                                        {entry.time}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-[15px] leading-relaxed text-slate-600 font-normal">
+                                                        {entry.content}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'categories' && (
+                            <div className="animate-in">
+                                <button onClick={() => setView('timeline')} className="mb-8 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors">
+                                    <i data-lucide="arrow-left" className="w-4 h-4"></i>
+                                    <span className="text-xs">返回时间轴</span>
+                                </button>
+                                <h2 className="text-3xl font-bold text-slate-800 mb-2">分类概览</h2>
+                                <p className="text-sm text-slate-400 mb-10">AI 根据您的记录自动分类</p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                    {Object.entries(CATEGORIES).map(([id, config]) => (
+                                        <CategoryCard 
+                                            key={id} 
+                                            id={id}
+                                            {...config} 
+                                            count={categoryStats[id]}
+                                            onClick={() => {
+                                                setSelectedCategory(id);
+                                                setView('search');
+                                            }} 
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'search' && (
+                            <div className="animate-in">
+                                <button onClick={() => {setView('timeline'); setSelectedCategory(null); setSearchQuery('')}} className="mb-8 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors">
+                                    <i data-lucide="arrow-left" className="w-4 h-4"></i>
+                                    <span className="text-xs">返回</span>
+                                </button>
+                                <div className="flex justify-between items-end mb-8 border-b border-slate-100 pb-4">
+                                    <h2 className="text-xl font-medium text-slate-800">
+                                        {selectedCategory ? CATEGORIES[selectedCategory].name : `搜索: ${searchQuery}`}
+                                    </h2>
+                                    <span className="text-xs text-slate-300">{filteredEntries.length} 条记录</span>
+                                </div>
+                                <div className="flex flex-col gap-8">
+                                    {filteredEntries.map((entry) => (
+                                        <div key={entry.id} className="p-6 bg-white border border-slate-100 rounded-3xl hover:border-blue-100 transition-colors group">
+                                            <div className="flex justify-between mb-4 items-center">
+                                                <span className="text-[10px] font-bold text-slate-300 tracking-widest uppercase">{entry.date} · {entry.time}</span>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-50 ${CATEGORIES[entry.category].color}`}>
+                                                    {CATEGORIES[entry.category].name}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm leading-relaxed text-slate-600">
+                                                {entry.content}
+                                            </p>
+                                        </div>
+                                    ))}
+                                    {filteredEntries.length === 0 && (
+                                        <div className="text-center py-20">
+                                            <i data-lucide="inbox" className="w-12 h-12 text-slate-100 mx-auto mb-4"></i>
+                                            <p className="text-slate-300 text-sm">暂无匹配内容</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* 底部输入框 */}
+                    {view === 'timeline' && (
+                        <footer className="fixed bottom-0 w-full z-40 flex justify-center p-8 px-4">
+                            {!isSttActive ? (
+                                <div className="w-full max-w-2xl glass rounded-[2.5rem] border border-slate-200/60 shadow-2xl flex items-end p-2 gap-2 fade-up">
+                                    <textarea 
+                                        ref={inputRef}
+                                        rows="1"
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+                                        placeholder="呼吸般记录..."
+                                        className="flex-1 bg-transparent border-none focus:outline-none px-6 py-4 text-sm resize-none hide-scrollbar max-h-32 text-slate-700 placeholder:text-slate-200"
+                                    ></textarea>
+                                    <div className="flex gap-2 p-2">
+                                        <button 
+                                            onClick={() => setIsSttActive(true)}
+                                            className="p-3 rounded-full text-slate-400 hover:bg-slate-50 transition-all active:scale-90"
+                                        >
+                                            <i data-lucide="mic-2" className="w-5 h-5"></i>
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSend()}
+                                            className={`p-3 rounded-full transition-all active:scale-90 ${inputValue ? 'bg-slate-800 text-white shadow-lg' : 'bg-slate-50 text-slate-200 cursor-not-allowed'}`}
+                                        >
+                                            <i data-lucide="arrow-up" className="w-5 h-5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-full max-w-2xl glass rounded-[2.5rem] border border-blue-100 shadow-2xl p-6 flex flex-col gap-6 fade-up">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-3 h-3 bg-blue-500 rounded-full pulse"></div>
+                                            <span className="text-xs font-bold text-blue-500 tracking-widest uppercase">正在聆听...</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => setIsSttActive(false)}
+                                            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                            取消录音
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="min-h-[60px] flex items-center justify-center text-center">
+                                        <p className="text-lg font-light text-slate-700 serif leading-relaxed italic">
+                                            {sttText || "..."}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex justify-center gap-4 mt-2">
+                                        <button 
+                                            onClick={() => handleSend(sttText)}
+                                            disabled={!sttText}
+                                            className={`px-10 py-3 rounded-full text-sm font-bold transition-all active:scale-95 ${sttText ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+                                        >
+                                            满意并保存
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </footer>
+                    )}
+
+                    {/* 应用管理抽屉 */}
+                    {isDrawerOpen && (
+                        <div className="fixed inset-0 z-50 flex justify-end">
+                            <div className="absolute inset-0 bg-black/5 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)}></div>
+                            <div className="relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col p-8 animate-in">
+                                <div className="flex justify-between items-center mb-12">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center">
+                                            <i data-lucide="feather" className="w-5 h-5 text-white"></i>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-bold text-slate-800">JOT DIARY</h2>
+                                            <p className="text-[10px] text-slate-300 tracking-widest uppercase">Append-Only Life</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setIsDrawerOpen(false)} className="text-slate-300 hover:text-slate-600">
+                                        <i data-lucide="x" className="w-5 h-5"></i>
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col gap-8">
+                                    <section>
+                                        <h3 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-4">导出日记</h3>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            <button onClick={() => handleExport('md')} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group hover:bg-blue-50 transition-colors">
+                                                <span className="text-sm text-slate-600 group-hover:text-blue-600">导出 Markdown</span>
+                                                <i data-lucide="file-down" className="w-4 h-4 text-slate-300"></i>
+                                            </button>
+                                            <button onClick={() => handleExport('txt')} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group hover:bg-slate-100 transition-colors">
+                                                <span className="text-sm text-slate-600">导出纯文本</span>
+                                                <i data-lucide="file-text" className="w-4 h-4 text-slate-300"></i>
+                                            </button>
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <h3 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-4">偏好设置</h3>
+                                        <div className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl">
+                                            <span className="text-sm text-slate-600">iCloud 同步</span>
+                                            <div className="w-8 h-4 bg-blue-500 rounded-full relative">
+                                                <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full"></div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
+
+                                <div className="mt-auto flex flex-col items-center gap-4">
+                                    <div className="p-6 bg-slate-50 rounded-3xl w-full text-center">
+                                        <p className="text-xs text-slate-400 italic">“记录，让生命不再只是消逝。”</p>
+                                    </div>
+                                    <span className="text-[10px] text-slate-200 tracking-[0.3em]">BETA 1.2.0</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<JotDiary />);
+    </script>
+</body>
+</html>

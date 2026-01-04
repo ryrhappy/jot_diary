@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fcfcfc;
+  --foreground: #1a1a1a;
+  --font-noto-serif: "Noto Serif SC", serif;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.timeline-line {
+  position: absolute;
+  left: 88px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #f1f5f9;
+}
+
+@keyframes pulse-animation {
+  0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.4); }
+  100% { box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+}
+
+.pulse {
+  animation: pulse-animation 2s infinite;
+}
+
