@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Header from '@/components/diary/Header';
 import Timeline from '@/components/diary/Timeline';
 import InputArea from '@/components/diary/InputArea';
@@ -9,7 +10,11 @@ import SearchView from '@/components/diary/SearchView';
 import { useDiaryStore } from '@/store/useDiaryStore';
 
 export default function Home() {
-  const { view } = useDiaryStore();
+  const { view, fetchEntries } = useDiaryStore();
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center pb-24">
