@@ -1,27 +1,53 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-export async function GET() {
-  const appId = '3eac4fce';
-  const apiKey = '5daff4994aadc0cd2ea17442dc7f2855';
-  const apiSecret = 'NGlwZmM5OGI5ZmYzOWI2NmVlY2Y2YyNzkz';
+export async function GET(request: Request) {
+  const appId = process.env.XFYUN_APP_ID || '';
+  const apiKey = process.env.XFYUN_API_KEY || '';
+  const apiSecret = process.env.XFYUN_API_SECRET || '';
 
-  const utc = new Date().toISOString().replace(/\.\d{3}Z$/, '+0800'); // Simplified UTC format for XfYun
+  if (!appId || !apiKey || !apiSecret) {
+    return NextResponse.json({ error: 'Xfyun configuration missing' }, { status: 500 });
+  }
+
+  // 生成 UTC 时间，格式：2025-01-05T09:32:17+0800
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const utc = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+0800`;
+  
   const uuid = crypto.randomUUID().replace(/-/g, '');
   
-  // Signature algorithm for RTASR LLM:
-  // 1. md5(appId + utc)
-  // 2. hmac-sha1(md5, apiKey) -> No, usually apiSecret is used for HMAC
-  // Let's use the one from the search result: signature = base64(hmac-sha1(md5(appId + utc), apiKey))
-  // Wait, let me double check the "API Key" vs "API Secret" usage.
-  // In RTASR LLM, signature uses APIKey as the secret for HMAC? 
-  // Most XfYun services use APISecret. The search result said "using accessKey (APIKey) to encrypt". 
-  // Let's follow the search result's logic for signature.
+  // 尝试方法1：标准 HMAC-SHA256 签名（对所有参数）
+  const paramString = [
+    `accessKeyId=${apiKey}`,
+    `appId=${appId}`,
+    `audio_encode=pcm_s16le`,
+    `lang=autodialect`,
+    `samplerate=16000`,
+    `utc=${utc}`,
+    `uuid=${uuid}`
+  ].join('&');
   
+  const signature1 = crypto.createHmac('sha256', apiSecret)
+    .update(paramString, 'utf8')
+    .digest('base64');
+  
+  // 尝试方法2：MD5 + HMAC-SHA1（备选方案）
   const baseString = appId + utc;
-  const md5Hash = crypto.createHash('md5').update(baseString).digest('hex');
-  const signature = crypto.createHmac('sha1', apiSecret).update(md5Hash).digest('base64');
+  const md5Hash = crypto.createHash('md5').update(baseString, 'utf8').digest('hex');
+  const signature2 = crypto.createHmac('sha1', apiSecret)
+    .update(md5Hash, 'utf8')
+    .digest('base64');
 
+  // 使用方法2：MD5 + HMAC-SHA1（根据科大讯飞文档示例）
+  const signature = signature2;
+
+  // 构造请求参数
   const params = new URLSearchParams({
     appId,
     accessKeyId: apiKey,
@@ -35,6 +61,22 @@ export async function GET() {
 
   const url = `wss://office-api-ast-dx.iflyaisol.com/ast/communicate/v1?${params.toString()}`;
 
-  return NextResponse.json({ url });
+  // 返回 URL 和调试信息
+  const { searchParams } = new URL(request.url);
+  const debug = searchParams.get('debug') === 'true';
+  
+  return NextResponse.json({ 
+    url,
+    ...(debug && {
+      debug: {
+        utc,
+        uuid,
+        signature_method1: signature1,
+        signature_method2: signature2,
+        signature_used: signature,
+        paramString
+      }
+    })
+  });
 }
 

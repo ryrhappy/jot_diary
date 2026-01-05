@@ -2,9 +2,16 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Mic, ArrowUp, Loader2 } from 'lucide-react';
+import { Mic, ArrowUp } from 'lucide-react';
 import { useDiaryStore, Category } from '@/store/useDiaryStore';
-import { floatTo16BitPCM, resample } from '@/lib/audio-utils';
+
+// 扩展 Window 接口以支持 Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 const CATEGORY_KEYWORDS: Record<Exclude<Category, 'NORMAL'>, string[]> = {
   TODO: ['待办', '要去', '完成', '任务', '买', 'todo', 'buy'],
@@ -19,15 +26,13 @@ export default function InputArea() {
   const [inputValue, setInputValue] = useState('');
   const { 
     addEntry, 
+    updateEntry,
     isSttActive, setIsSttActive,
     sttText, setSttText 
   } = useDiaryStore();
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  
-  const [isConnecting, setIsConnecting] = useState(false);
-  const socketRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef<string>('');
 
   const autoTag = (text: string): Category => {
     for (const [key, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -36,105 +41,90 @@ export default function InputArea() {
     return 'NORMAL';
   };
 
-  const startSTT = async () => {
-    try {
-      setIsConnecting(true);
+  const startSTT = () => {
+    // 检查浏览器是否支持 Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('您的浏览器不支持语音识别，请使用 Chrome 或 Edge 浏览器');
+      setIsSttActive(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    finalTranscriptRef.current = '';
+
+    // 配置识别参数
+    recognition.lang = 'zh-CN'; // 中文识别
+    recognition.continuous = true; // 连续识别
+    recognition.interimResults = true; // 返回中间结果
+
+    recognition.onstart = () => {
+      console.log('语音识别已开始');
       setSttText('');
-      
-      // 1. 获取鉴权 URL
-      const res = await fetch('/api/xfyun/auth');
-      const { url } = await res.json();
+      finalTranscriptRef.current = '';
+    };
 
-      // 2. 建立 WebSocket
-      const socket = new WebSocket(url);
-      socketRef.current = socket;
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
 
-      socket.onopen = async () => {
-        console.log('XfYun WebSocket Connected');
-        setIsConnecting(false);
-        
-        // 3. 开始录音
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioContextRef.current = audioContext;
-        
-        const source = audioContext.createMediaStreamSource(stream);
-        const processor = audioContext.createScriptProcessor(4096, 1, 1);
-        processorRef.current = processor;
-
-        processor.onaudioprocess = (e) => {
-          const inputData = e.inputBuffer.getChannelData(0);
-          // 采样率转换并转为 16bit PCM
-          const resampled = resample(inputData, audioContext.sampleRate, 16000);
-          const pcmData = floatTo16BitPCM(resampled);
-          
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(pcmData);
-          }
-        };
-
-        source.connect(processor);
-        processor.connect(audioContext.destination);
-      };
-
-      socket.onmessage = (e) => {
-        const response = JSON.parse(e.data);
-        if (response.action === 'result') {
-          try {
-            const data = JSON.parse(response.data);
-            const rt = data.cn.st.rt[0];
-            const text = rt.ws.map((w: any) => w.cw[0].w).join('');
-            
-            // type "0" 是最终结果，type "1" 是中间结果
-            if (data.cn.st.type === '0') {
-              setSttText(prev => prev + text);
-            } else {
-              // 对于中间结果，我们只显示当前这段，不累加
-              // 实际应用中可以根据 sid 或 pg 字段进行更精细的拼接
-              setSttText(prev => {
-                // 如果 prev 为空或上一句已结束，直接显示 text
-                // 否则这里只是简单覆盖显示（演示逻辑）
-                return prev.split('。').slice(0, -1).join('。') + (prev ? '。' : '') + text;
-              });
-            }
-          } catch (err) {
-            console.error('Parse result error:', err);
-          }
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
         }
-      };
+      }
 
-      socket.onerror = (err) => {
-        console.error('WebSocket Error:', err);
-        stopSTT();
-      };
+      // 累加最终结果，显示中间结果
+      if (finalTranscript) {
+        finalTranscriptRef.current += finalTranscript;
+      }
 
-      socket.onclose = () => {
-        console.log('XfYun WebSocket Closed');
-        setIsConnecting(false);
-      };
+      // 更新显示：已确认的文本 + 当前中间结果
+      setSttText(finalTranscriptRef.current + interimTranscript);
+    };
 
+    recognition.onerror = (event: any) => {
+      console.error('语音识别错误:', event.error);
+      if (event.error === 'no-speech') {
+        setSttText('未检测到语音，请重试');
+      } else if (event.error === 'network') {
+        setSttText('网络错误，请检查网络连接');
+      } else if (event.error === 'not-allowed') {
+        setSttText('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
+      } else {
+        setSttText(`识别错误: ${event.error}`);
+      }
+      setIsSttActive(false);
+    };
+
+    recognition.onend = () => {
+      console.log('语音识别已结束');
+      // 如果用户没有手动停止，可能是识别超时，可以选择自动重启
+      // 这里我们让用户手动控制
+    };
+
+    try {
+      recognition.start();
     } catch (err) {
-      console.error('Start STT error:', err);
-      setIsConnecting(false);
+      console.error('启动语音识别失败:', err);
+      setSttText('启动失败，请重试');
       setIsSttActive(false);
     }
   };
 
   const stopSTT = () => {
-    if (socketRef.current) {
-      // 发送结束标识（可选，取决于具体接口要求，通常直接关闭即可）
-      socketRef.current.close();
-      socketRef.current = null;
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        // 忽略停止时的错误
+      }
+      recognitionRef.current = null;
     }
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    setIsConnecting(false);
   };
 
   useEffect(() => {
@@ -146,27 +136,52 @@ export default function InputArea() {
     return () => stopSTT();
   }, [isSttActive]);
 
-  const handleSend = (text = inputValue) => {
+  const handleSend = async (text = inputValue) => {
     const targetText = text.trim();
     if (!targetText) return;
 
     const now = new Date();
-    addEntry({
-      id: Date.now().toString(),
+    const entryId = Date.now().toString();
+    
+    // 先使用关键词匹配作为默认分类
+    const defaultCategory = autoTag(targetText);
+    
+    const newEntry = {
+      id: entryId,
       content: targetText,
       time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
       date: now.toISOString().split('T')[0],
-      category: autoTag(targetText),
+      category: defaultCategory,
       completed: targetText.includes('待办') || targetText.includes('todo') ? false : undefined
-    });
+    };
 
+    // 先保存日记（使用默认分类）
+    addEntry(newEntry);
     setInputValue('');
+
+    // 异步调用 AI 分类并更新
+    try {
+      const res = await fetch('/api/categorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: targetText })
+      });
+      const data = await res.json();
+      if (data.category && data.category !== defaultCategory) {
+        // 如果 AI 分类结果不同，更新分类
+        updateEntry(entryId, { category: data.category as Category });
+      }
+    } catch (err) {
+      console.error('Failed to categorize:', err);
+      // 分类失败不影响日记保存
+    }
   };
 
   const handleConfirmStt = () => {
     setInputValue(sttText);
     setIsSttActive(false);
     setSttText('');
+    finalTranscriptRef.current = '';
   };
 
   useEffect(() => {
@@ -207,19 +222,14 @@ export default function InputArea() {
         <div className="w-full max-w-2xl glass rounded-[2.5rem] border border-blue-100 shadow-2xl p-6 flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {isConnecting ? (
-                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-              ) : (
-                <div className="w-3 h-3 bg-blue-500 rounded-full pulse" />
-              )}
-              <span className="text-xs font-bold text-blue-500 tracking-widest uppercase">
-                {isConnecting ? '正在连接...' : t('listening')}
-              </span>
+              <div className="w-3 h-3 bg-blue-500 rounded-full pulse" />
+              <span className="text-xs font-bold text-blue-500 tracking-widest uppercase">{t('listening')}</span>
             </div>
             <button 
               onClick={() => {
                 setIsSttActive(false);
                 setSttText('');
+                finalTranscriptRef.current = '';
               }}
               className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
             >
@@ -229,14 +239,14 @@ export default function InputArea() {
           
           <div className="min-h-[60px] flex items-center justify-center text-center">
             <p className="text-lg font-light text-slate-700 font-serif leading-relaxed italic">
-              {sttText || (isConnecting ? "准备中..." : "正在倾听...")}
+              {sttText || "正在倾听..."}
             </p>
           </div>
 
           <div className="flex justify-center gap-4 mt-2">
             <button 
               onClick={handleConfirmStt}
-              disabled={!sttText || isConnecting}
+              disabled={!sttText}
               className={`px-10 py-3 rounded-full text-sm font-bold transition-all active:scale-95 ${sttText ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
             >
               完成转文字
@@ -247,4 +257,3 @@ export default function InputArea() {
     </footer>
   );
 }
-
