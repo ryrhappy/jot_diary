@@ -16,7 +16,21 @@
     "today": "Today",
     "autoCategorized": "AI auto-categorized",
     "return": "Return",
-    "noResults": "No results found"
+    "noResults": "No results found",
+    "deleteTitle": "Confirm Delete?",
+    "deleteDescription": "This entry will be permanently deleted and cannot be recovered.",
+    "confirm": "Confirm",
+    "deleteButton": "Delete",
+    "completed": "Completed",
+    "pending": "Pending",
+    "entryCount": "{count} entries",
+    "sttNotSupported": "Your browser does not support speech recognition. Please use Chrome or Edge.",
+    "sttInitial": "Listening...",
+    "sttFinish": "Finish",
+    "sttNoSpeech": "No speech detected, please try again",
+    "sttNetwork": "Network error, please check your connection",
+    "sttNotAllowed": "Microphone access denied, please allow access in browser settings",
+    "sttError": "Recognition error: {error}"
   },
   "Categories": {
     "TODO": "To-do",
@@ -25,6 +39,49 @@
     "REFLECTION": "Reflection",
     "GRATITUDE": "Gratitude",
     "NORMAL": "Daily"
+  },
+  "Auth": {
+    "signin": "Sign In",
+    "signup": "Sign Up",
+    "reset": "Reset Password",
+    "signinTitle": "Sign In",
+    "signupTitle": "Sign Up",
+    "resetTitle": "Reset Password",
+    "signinDescription": "Sign in to access your diary",
+    "signupDescription": "Create a new account to start recording",
+    "resetDescription": "Enter your email address and we'll send you a password reset link",
+    "email": "Email Address",
+    "password": "Password",
+    "emailPlaceholder": "your@email.com",
+    "passwordPlaceholder": "At least 6 characters",
+    "signinButton": "Sign In",
+    "signinButtonLoading": "Signing in...",
+    "signupButton": "Sign Up",
+    "signupButtonLoading": "Signing up...",
+    "resetButton": "Send Reset Link",
+    "resetButtonLoading": "Sending...",
+    "noAccount": "Don't have an account? Sign up",
+    "hasAccount": "Already have an account? Sign in",
+    "forgotPassword": "Forgot password?",
+    "backToSignin": "Back to Sign In",
+    "signinError": "Sign in failed, please check your email and password",
+    "emailNotConfirmed": "Email not confirmed. Please check your email and click the verification link. If you didn't receive the email, please check your spam folder.",
+    "signupError": "Sign up failed, please check your email format and password strength",
+    "resetError": "Failed to send password reset email",
+    "signupSuccess": "Sign up successful! Please sign in with your email and password.",
+    "resetSuccess": "Password reset email sent, please check your inbox",
+    "operationError": "Operation failed, please try again later",
+    "signout": "Sign Out"
+  },
+  "Welcome": {
+    "title": "Welcome to Jot Diary",
+    "description": "Please sign in to start recording your life",
+    "button": "Sign In Now"
+  },
+  "Settings": {
+    "language": "Language",
+    "chinese": "Chinese",
+    "english": "English"
   }
 }
 

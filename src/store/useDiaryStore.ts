@@ -10,6 +10,7 @@ export interface DiaryEntry {
   date: string;
   category: Category;
   completed?: boolean;
+  user_id?: string; // User ID, automatically linked by DB
 }
 
 interface DiaryState {
@@ -51,9 +52,17 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   fetchEntries: async () => {
     set({ loading: true });
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        set({ entries: [], loading: false });
+        return;
+      }
+
       const { data, error } = await supabase
         .from('diaries')
         .select('*')
+        .eq('user_id', user.id) // Only fetch data for current user
         .order('date', { ascending: false })
         .order('time', { ascending: false });
 
@@ -69,12 +78,20 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   setEntries: (entries) => set({ entries }),
 
   addEntry: async (entry) => {
+    // 获取当前用户
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     // 乐观更新
     const previousEntries = get().entries;
-    set((state) => ({ entries: [entry, ...state.entries] }));
+    const entryWithUserId = { ...entry, user_id: user.id };
+    set((state) => ({ entries: [entryWithUserId, ...state.entries] }));
 
     try {
-      const { error } = await supabase.from('diaries').insert([entry]);
+      const { error } = await supabase.from('diaries').insert([entryWithUserId]);
       if (error) throw error;
     } catch (err) {
       console.error('Error adding entry:', err);
@@ -84,7 +101,14 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   },
 
   updateEntry: async (id, updates) => {
-    // 乐观更新
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    // Optimistic update
     const previousEntries = get().entries;
     set((state) => ({
       entries: state.entries.map((entry) => 
@@ -96,17 +120,25 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       const { error } = await supabase
         .from('diaries')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id); // Ensure only updating own data
       if (error) throw error;
     } catch (err) {
       console.error('Error updating entry:', err);
-      // 回滚
+      // Rollback
       set({ entries: previousEntries });
     }
   },
 
   deleteEntry: async (id) => {
-    // 乐观更新
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    // Optimistic update
     const previousEntries = get().entries;
     set((state) => ({
       entries: state.entries.filter((entry) => entry.id !== id)
@@ -116,11 +148,12 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
       const { error } = await supabase
         .from('diaries')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id); // Ensure only deleting own data
       if (error) throw error;
     } catch (err) {
       console.error('Error deleting entry:', err);
-      // 回滚
+      // Rollback
       set({ entries: previousEntries });
     }
   },

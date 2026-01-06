@@ -1,12 +1,17 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
-import { X, Feather, FileDown, FileText, Settings2, Cloud } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
+import { X, Feather, FileDown, FileText, Settings2, Cloud, Languages } from 'lucide-react';
 import { useDiaryStore } from '@/store/useDiaryStore';
+import { useRouter, usePathname } from '@/i18n/routing';
 
 export default function Sidebar() {
   const t = useTranslations('Index');
   const ct = useTranslations('Categories');
+  const st = useTranslations('Settings');
+  const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const { entries, isDrawerOpen, setIsDrawerOpen } = useDiaryStore();
 
   const handleExport = (format: 'md' | 'txt') => {
@@ -69,13 +74,36 @@ export default function Sidebar() {
 
           <section>
             <h3 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-4">{t('settings')}</h3>
-            <div className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl">
-              <div className="flex items-center gap-2">
-                <Cloud className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-600">Cloud Sync</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl">
+                <div className="flex items-center gap-2">
+                  <Cloud className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-600">Cloud Sync</span>
+                </div>
+                <div className="w-8 h-4 bg-blue-500 rounded-full relative">
+                  <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full" />
+                </div>
               </div>
-              <div className="w-8 h-4 bg-blue-500 rounded-full relative">
-                <div className="absolute right-1 top-1 w-2 h-2 bg-white rounded-full" />
+
+              <div className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl">
+                <div className="flex items-center gap-2">
+                  <Languages className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-600">{st('language')}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => router.replace(pathname, { locale: 'en' })}
+                    className={`text-xs px-2 py-1 rounded-md transition-colors ${locale === 'en' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => router.replace(pathname, { locale: 'zh' })}
+                    className={`text-xs px-2 py-1 rounded-md transition-colors ${locale === 'zh' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+                  >
+                    中文
+                  </button>
+                </div>
               </div>
             </div>
           </section>

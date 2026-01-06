@@ -16,7 +16,21 @@
     "today": "今天",
     "autoCategorized": "AI 自动分类",
     "return": "返回",
-    "noResults": "暂无匹配内容"
+    "noResults": "暂无匹配内容",
+    "deleteTitle": "确认删除？",
+    "deleteDescription": "这条日记删除后将无法找回，请确认是否继续操作。",
+    "confirm": "确认",
+    "deleteButton": "确认删除",
+    "completed": "已完成",
+    "pending": "待完成",
+    "entryCount": "{count} 条记录",
+    "sttNotSupported": "您的浏览器不支持语音识别，请使用 Chrome 或 Edge 浏览器",
+    "sttInitial": "正在倾听...",
+    "sttFinish": "完成转文字",
+    "sttNoSpeech": "未检测到语音，请重试",
+    "sttNetwork": "网络错误，请检查网络连接",
+    "sttNotAllowed": "麦克风权限被拒绝，请在浏览器设置中允许麦克风访问",
+    "sttError": "识别错误: {error}"
   },
   "Categories": {
     "TODO": "待办事项",
@@ -25,6 +39,49 @@
     "REFLECTION": "需要反思",
     "GRATITUDE": "感恩的事",
     "NORMAL": "日常记录"
+  },
+  "Auth": {
+    "signin": "登录",
+    "signup": "注册",
+    "reset": "重置密码",
+    "signinTitle": "登录",
+    "signupTitle": "注册",
+    "resetTitle": "重置密码",
+    "signinDescription": "登录以访问您的日记",
+    "signupDescription": "创建新账户开始记录",
+    "resetDescription": "输入邮箱地址，我们将发送重置密码链接",
+    "email": "邮箱地址",
+    "password": "密码",
+    "emailPlaceholder": "your@email.com",
+    "passwordPlaceholder": "至少6个字符",
+    "signinButton": "登录",
+    "signinButtonLoading": "登录中...",
+    "signupButton": "注册",
+    "signupButtonLoading": "注册中...",
+    "resetButton": "发送重置链接",
+    "resetButtonLoading": "发送中...",
+    "noAccount": "还没有账户？立即注册",
+    "hasAccount": "已有账户？立即登录",
+    "forgotPassword": "忘记密码？",
+    "backToSignin": "返回登录",
+    "signinError": "登录失败，请检查邮箱和密码",
+    "emailNotConfirmed": "邮箱未验证，请检查您的邮箱并点击验证链接。如果未收到邮件，请检查垃圾邮件文件夹。",
+    "signupError": "注册失败，请检查邮箱格式和密码强度",
+    "resetError": "发送重置密码邮件失败",
+    "signupSuccess": "注册成功！请使用您的邮箱和密码登录。",
+    "resetSuccess": "重置密码邮件已发送，请检查您的邮箱",
+    "operationError": "操作失败，请稍后重试",
+    "signout": "登出"
+  },
+  "Welcome": {
+    "title": "欢迎使用 Jot Diary",
+    "description": "请登录以开始记录您的日记",
+    "button": "立即登录"
+  },
+  "Settings": {
+    "language": "语言",
+    "chinese": "中文",
+    "english": "英文"
   }
 }
 

@@ -1,11 +1,15 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Search, Sparkles, Grid, Menu, Feather } from 'lucide-react';
+import { Search, Sparkles, Grid, Menu, Feather, LogOut, User } from 'lucide-react';
 import { useDiaryStore } from '@/store/useDiaryStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useState } from 'react';
+import AuthModal from '@/components/auth/AuthModal';
 
 export default function Header() {
   const t = useTranslations('Index');
+  const at = useTranslations('Auth');
   const { 
     view, setView, 
     isAiMode, setIsAiMode, 
@@ -13,6 +17,9 @@ export default function Header() {
     setSelectedCategory,
     setIsDrawerOpen 
   } = useDiaryStore();
+  const { user, signOut } = useAuthStore();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
     <header className="fixed top-0 w-full z-40 flex flex-col items-center p-6 gap-4">
@@ -33,7 +40,50 @@ export default function Header() {
           <button onClick={() => setIsDrawerOpen(true)} className="text-slate-400 hover:text-slate-600">
             <Menu className="w-5 h-5" />
           </button>
+          
+          {/* User Menu */}
+          <div className="relative">
+            {user ? (
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <User className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-4 py-1.5 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                {at('signin')}
+              </button>
+            )}
+            
+            {showUserMenu && user && (
+              <div className="absolute right-0 top-full mt-2 w-48 glass rounded-lg border border-slate-200/60 shadow-lg py-2 z-50">
+                <div className="px-4 py-2 border-b border-slate-200/60">
+                  <p className="text-sm font-medium text-slate-800 truncate">{user.email}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await signOut();
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-100 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {at('signout')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+        
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)}
+          defaultMode="signin"
+        />
       </div>
       
       <div className="w-full max-w-2xl glass rounded-2xl border border-slate-200/60 shadow-sm flex items-center px-4 py-2">

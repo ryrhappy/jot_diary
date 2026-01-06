@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Mic, ArrowUp } from 'lucide-react';
 import { useDiaryStore, Category } from '@/store/useDiaryStore';
 
@@ -14,15 +14,16 @@ declare global {
 }
 
 const CATEGORY_KEYWORDS: Record<Exclude<Category, 'NORMAL'>, string[]> = {
-  TODO: ['待办', '要去', '完成', '任务', '买', 'todo', 'buy'],
-  DREAM: ['梦想', '以后', '想成为', '愿景', '期待', 'dream', 'future'],
-  BEAUTIFUL: ['美好', '开心', '快乐', '阳光', '享受', 'beautiful', 'happy'],
-  REFLECTION: ['反思', '错误', '教训', '改进', '后悔', 'reflect', 'mistake'],
-  GRATITUDE: ['感恩', '感谢', '幸好', '谢谢', 'grateful', 'thanks']
+  TODO: ['todo', 'buy', 'task', 'complete', 'need to'],
+  DREAM: ['dream', 'future', 'wish', 'vision', 'expect'],
+  BEAUTIFUL: ['beautiful', 'happy', 'joy', 'sunshine', 'enjoy'],
+  REFLECTION: ['reflect', 'mistake', 'lesson', 'improve', 'regret'],
+  GRATITUDE: ['grateful', 'thanks', 'thank', 'blessed']
 };
 
 export default function InputArea() {
   const t = useTranslations('Index');
+  const locale = useLocale();
   const [inputValue, setInputValue] = useState('');
   const { 
     addEntry, 
@@ -42,10 +43,10 @@ export default function InputArea() {
   };
 
   const startSTT = () => {
-    // 检查浏览器是否支持 Web Speech API
+    // Check if browser supports Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('您的浏览器不支持语音识别，请使用 Chrome 或 Edge 浏览器');
+      alert(t('sttNotSupported'));
       setIsSttActive(false);
       return;
     }
@@ -54,10 +55,10 @@ export default function InputArea() {
     recognitionRef.current = recognition;
     finalTranscriptRef.current = '';
 
-    // 配置识别参数
-    recognition.lang = 'zh-CN'; // 中文识别
-    recognition.continuous = true; // 连续识别
-    recognition.interimResults = true; // 返回中间结果
+    // Configure recognition parameters
+    recognition.lang = locale === 'zh' ? 'zh-CN' : 'en-US'; // Speech recognition language
+    recognition.continuous = true; // Continuous recognition
+    recognition.interimResults = true; // Return interim results
 
     recognition.onstart = () => {
       console.log('语音识别已开始');
@@ -90,28 +91,28 @@ export default function InputArea() {
     recognition.onerror = (event: any) => {
       console.error('语音识别错误:', event.error);
       if (event.error === 'no-speech') {
-        setSttText('未检测到语音，请重试');
+        setSttText(t('sttNoSpeech'));
       } else if (event.error === 'network') {
-        setSttText('网络错误，请检查网络连接');
+        setSttText(t('sttNetwork'));
       } else if (event.error === 'not-allowed') {
-        setSttText('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
+        setSttText(t('sttNotAllowed'));
       } else {
-        setSttText(`识别错误: ${event.error}`);
+        setSttText(t('sttError', { error: event.error }));
       }
       setIsSttActive(false);
     };
 
     recognition.onend = () => {
-      console.log('语音识别已结束');
-      // 如果用户没有手动停止，可能是识别超时，可以选择自动重启
-      // 这里我们让用户手动控制
+      console.log('Speech recognition ended');
+      // If the user hasn't manually stopped, it might be a timeout, can choose to auto-restart
+      // Here we let the user control it manually
     };
 
     try {
       recognition.start();
     } catch (err) {
-      console.error('启动语音识别失败:', err);
-      setSttText('启动失败，请重试');
+      console.error('Failed to start speech recognition:', err);
+      setSttText(t('sttError', { error: 'Failed to start' }));
       setIsSttActive(false);
     }
   };
@@ -152,7 +153,7 @@ export default function InputArea() {
       time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
       date: now.toISOString().split('T')[0],
       category: defaultCategory,
-      completed: targetText.includes('待办') || targetText.includes('todo') ? false : undefined
+      completed: targetText.toLowerCase().includes('todo') || targetText.includes('待办') ? false : undefined
     };
 
     // 先保存日记（使用默认分类）
@@ -239,7 +240,7 @@ export default function InputArea() {
           
           <div className="min-h-[60px] flex items-center justify-center text-center">
             <p className="text-lg font-light text-slate-700 font-serif leading-relaxed italic">
-              {sttText || "正在倾听..."}
+              {sttText || t('sttInitial')}
             </p>
           </div>
 
@@ -249,7 +250,7 @@ export default function InputArea() {
               disabled={!sttText}
               className={`px-10 py-3 rounded-full text-sm font-bold transition-all active:scale-95 ${sttText ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
             >
-              完成转文字
+              {t('sttFinish')}
             </button>
           </div>
         </div>

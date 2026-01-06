@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 
 const CATEGORY_KEYWORDS = {
-  TODO: ['待办', '要去', '完成', '任务', '买', 'todo', 'buy'],
-  DREAM: ['梦想', '以后', '想成为', '愿景', '期待', 'dream', 'future'],
-  BEAUTIFUL: ['美好', '开心', '快乐', '阳光', '享受', 'beautiful', 'happy'],
-  REFLECTION: ['反思', '错误', '教训', '改进', '后悔', 'reflect', 'mistake'],
-  GRATITUDE: ['感恩', '感谢', '幸好', '谢谢', 'grateful', 'thanks']
+  TODO: ['todo', 'buy', 'task', 'complete', 'need to'],
+  DREAM: ['dream', 'future', 'wish', 'vision', 'expect'],
+  BEAUTIFUL: ['beautiful', 'happy', 'joy', 'sunshine', 'enjoy'],
+  REFLECTION: ['reflect', 'mistake', 'lesson', 'improve', 'regret'],
+  GRATITUDE: ['grateful', 'thanks', 'thank', 'blessed']
 };
 
 /**
- * 使用 DeepSeek API 进行智能分类
+ * Intelligent categorization using DeepSeek API
  */
 export async function POST(req: Request) {
   let content: string = '';
@@ -22,14 +22,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ category: 'NORMAL' });
     }
 
-    // 如果没有配置 DeepSeek API Key，使用关键词匹配作为降级方案
+    // Fallback to keyword matching if DeepSeek API Key is not configured
     if (!process.env.DEEPSEEK_API_KEY) {
       return NextResponse.json({ 
         category: categorizeByKeywords(content)
       });
     }
 
-    // 调用 DeepSeek API 进行分类
+    // Call DeepSeek API for categorization
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -41,21 +41,21 @@ export async function POST(req: Request) {
         messages: [
           {
             role: 'system',
-            content: `你是一个专业的日记分类助手。请根据用户提供的日记内容，将其分类到以下类别之一：
+            content: `You are a professional diary categorization assistant. Please categorize the user's diary entry into one of the following categories:
 
-分类说明：
-- TODO: 待办事项、任务、需要完成的事情
-- DREAM: 梦想、愿景、未来计划、期待
-- BEAUTIFUL: 美好事情、开心时刻、快乐体验、享受的时光
-- REFLECTION: 反思、错误、教训、需要改进的地方
-- GRATITUDE: 感恩、感谢、值得庆幸的事情
-- NORMAL: 日常记录、普通日记、无法归入以上类别的内容
+Category descriptions:
+- TODO: Tasks, things to do, items to complete
+- DREAM: Dreams, visions, future plans, expectations
+- BEAUTIFUL: Beautiful moments, happy times, joyful experiences, enjoyable moments
+- REFLECTION: Reflections, mistakes, lessons learned, areas for improvement
+- GRATITUDE: Gratitude, thanks, things to be thankful for
+- NORMAL: Daily records, general diary entries, content that doesn't fit into the above categories
 
-请只返回分类名称（大写），不要返回其他内容。例如：TODO、DREAM、BEAUTIFUL、REFLECTION、GRATITUDE 或 NORMAL。`
+Please return ONLY the category name (in uppercase). For example: TODO, DREAM, BEAUTIFUL, REFLECTION, GRATITUDE, or NORMAL.`
           },
           {
             role: 'user',
-            content: `请对以下日记内容进行分类：\n\n${content}`
+            content: `Please categorize the following diary entry:\n\n${content}`
           }
         ],
         temperature: 0.3,
@@ -70,14 +70,14 @@ export async function POST(req: Request) {
     const data = await response.json();
     const category = data.choices[0]?.message?.content?.trim().toUpperCase() || 'NORMAL';
 
-    // 验证分类是否有效
+    // Validate if the category is valid
     const validCategories = ['TODO', 'DREAM', 'BEAUTIFUL', 'REFLECTION', 'GRATITUDE', 'NORMAL'];
     const finalCategory = validCategories.includes(category) ? category : categorizeByKeywords(content);
 
     return NextResponse.json({ category: finalCategory });
   } catch (error) {
     console.error('Categorization error:', error);
-    // 降级到关键词匹配
+    // Fallback to keyword matching
     return NextResponse.json({ 
       category: content ? categorizeByKeywords(content) : 'NORMAL'
     });
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 }
 
 /**
- * 降级方案：使用关键词匹配进行分类
+ * Fallback: Categorize using keyword matching
  */
 function categorizeByKeywords(content: string): string {
   const lowerContent = content.toLowerCase();

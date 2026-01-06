@@ -51,7 +51,7 @@ export default function SearchView() {
         <h2 className="text-xl font-medium text-slate-800">
           {selectedCategory ? ct(selectedCategory) : `${t('search')}: ${searchQuery}`}
         </h2>
-        <span className="text-xs text-slate-300">{filteredEntries.length} entries</span>
+        <span className="text-xs text-slate-300">{t('entryCount', { count: filteredEntries.length })}</span>
       </div>
 
       <div className="flex flex-col gap-8">
@@ -70,12 +70,12 @@ export default function SearchView() {
                     {entry.completed ? (
                       <>
                         <CheckCircle2 className="w-3 h-3" />
-                        已完成
+                        {t('completed')}
                       </>
                     ) : (
                       <>
                         <Circle className="w-3 h-3" />
-                        待完成
+                        {t('pending')}
                       </>
                     )}
                   </button>

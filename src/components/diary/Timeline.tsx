@@ -1,20 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useDiaryStore } from '@/store/useDiaryStore';
 import { Trash2, Edit3, Check, X, AlertCircle } from 'lucide-react';
 
 export default function Timeline() {
   const t = useTranslations('Index');
+  const locale = useLocale();
   const { entries, deleteEntry, updateEntry } = useDiaryStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const today = new Date();
-  const dateStr = today.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
-  const weekday = today.toLocaleDateString('zh-CN', { weekday: 'long' });
+  const dateStr = today.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'long', day: 'numeric' });
+  const weekday = today.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'long' });
 
   const handleEdit = (id: string, content: string) => {
     setEditingId(id);
@@ -44,22 +45,22 @@ export default function Timeline() {
               <div className="p-4 bg-red-50 rounded-2xl">
                 <AlertCircle className="w-8 h-8 text-red-400" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800">确认删除？</h3>
+              <h3 className="text-xl font-bold text-slate-800">{t('deleteTitle')}</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                这条日记删除后将无法找回，请确认是否继续操作。
+                {t('deleteDescription')}
               </p>
               <div className="flex gap-3 w-full mt-4">
                 <button 
                   onClick={() => setDeleteConfirmId(null)}
                   className="flex-1 px-6 py-3 rounded-2xl bg-slate-50 text-slate-400 text-sm font-bold hover:bg-slate-100 transition-colors"
                 >
-                  取消
+                  {t('cancel')}
                 </button>
                 <button 
                   onClick={() => confirmDelete(deleteConfirmId)}
                   className="flex-1 px-6 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-600 active:scale-95 transition-all"
                 >
-                  确认删除
+                  {t('deleteButton')}
                 </button>
               </div>
             </div>
