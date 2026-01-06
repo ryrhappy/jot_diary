@@ -3,7 +3,7 @@ import { Inter, Noto_Serif_SC } from "next/font/google";
 import "../globals.css";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-import { notFound } from 'next-intl/navigation';
+import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,7 +23,7 @@ export default async function RootLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
 
