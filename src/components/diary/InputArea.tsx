@@ -45,6 +45,13 @@ export default function InputArea() {
   };
 
   const startSTT = () => {
+    // 检查是否在安全上下文中（移动端录音必须要求 HTTPS）
+    if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      alert('语音识别需要 HTTPS 安全连接才能在手机上使用。如果您在本地测试，请确保通过 localhost 访问。');
+      setIsSttActive(false);
+      return;
+    }
+
     // Check if browser supports Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -57,10 +64,11 @@ export default function InputArea() {
     recognitionRef.current = recognition;
     finalTranscriptRef.current = '';
 
-    // Configure recognition parameters
-    recognition.lang = locale === 'zh' ? 'zh-CN' : 'en-US'; // Speech recognition language
-    recognition.continuous = true; // Continuous recognition
-    recognition.interimResults = true; // Return interim results
+    // 配置识别参数
+    recognition.lang = locale === 'zh' ? 'zh-CN' : 'en-US';
+    // 在移动端 Safari 上，continuous 可能导致识别过快停止，但在 Chrome 上表现良好
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onstart = () => {
       console.log('语音识别已开始');
@@ -97,7 +105,12 @@ export default function InputArea() {
       } else if (event.error === 'network') {
         setSttText(t('sttNetwork'));
       } else if (event.error === 'not-allowed') {
-        setSttText(t('sttNotAllowed'));
+        // 针对 NotAllowedError 给出更详细的引导
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const detailMessage = isIOS 
+          ? '麦克风权限被拒绝。请点击浏览器地址栏左侧的“大小”或“AA”图标，选择“网站设置”，然后允许麦克风访问。'
+          : t('sttNotAllowed');
+        setSttText(detailMessage);
       } else {
         setSttText(t('sttError', { error: event.error }));
       }
@@ -130,14 +143,24 @@ export default function InputArea() {
     }
   };
 
-  useEffect(() => {
-    if (isSttActive) {
+  const handleStartSTT = () => {
+    setIsSttActive(true);
+    // 延迟一小会儿启动识别，确保状态已更新且 DOM 准备就绪
+    // 但必须保持在同一个用户交互链中
+    setTimeout(() => {
       startSTT();
-    } else {
-      stopSTT();
-    }
+    }, 50);
+  };
+
+  useEffect(() => {
+    // 移除 useEffect 中的自动启动逻辑，改为由 handleStartSTT 手动触发
+    // if (isSttActive) {
+    //   startSTT();
+    // } else {
+    //   stopSTT();
+    // }
     return () => stopSTT();
-  }, [isSttActive]);
+  }, []);
 
   const handleSend = async (text = inputValue) => {
     const targetText = text.trim();
@@ -225,7 +248,7 @@ export default function InputArea() {
             </div>
             <div className="flex gap-2">
               <button 
-                onClick={() => setIsSttActive(true)}
+                onClick={handleStartSTT}
                 className="p-3 rounded-full text-slate-400 hover:bg-slate-100 hover:text-blue-500 transition-all active:scale-90"
                 title="Voice Input"
               >
@@ -271,7 +294,7 @@ export default function InputArea() {
             
             {/* Visualization Area */}
             <div className="flex flex-col items-center justify-center gap-6 py-4">
-              <AudioVisualizer isActive={isSttActive} />
+              <AudioVisualizer isActive={isSttActive} isSimulated={true} />
               
               <div className="w-full min-h-[140px] flex items-center justify-center text-center px-4 transition-all duration-300">
                 <p className={`text-2xl md:text-3xl font-light leading-relaxed tracking-tight ${sttText ? 'text-slate-800' : 'text-slate-300'}`}>

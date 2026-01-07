@@ -4,13 +4,14 @@ import { useEffect, useRef } from 'react';
 
 interface AudioVisualizerProps {
   isActive: boolean;
+  isSimulated?: boolean;
 }
 
 /**
  * 音频可视化组件
  * @param {AudioVisualizerProps} props
  */
-export default function AudioVisualizer({ isActive }: AudioVisualizerProps) {
+export default function AudioVisualizer({ isActive, isSimulated = false }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -18,14 +19,14 @@ export default function AudioVisualizer({ isActive }: AudioVisualizerProps) {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isSimulated) {
       startVisualizing();
     } else {
       stopVisualizing();
     }
 
     return () => stopVisualizing();
-  }, [isActive]);
+  }, [isActive, isSimulated]);
 
   const startVisualizing = async () => {
     try {
@@ -34,6 +35,12 @@ export default function AudioVisualizer({ isActive }: AudioVisualizerProps) {
 
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContext();
+      
+      // iOS 必须在用户交互后 resume AudioContext
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
       audioContextRef.current = audioContext;
 
       const analyser = audioContext.createAnalyser();
@@ -55,9 +62,11 @@ export default function AudioVisualizer({ isActive }: AudioVisualizerProps) {
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
     if (audioContextRef.current) {
       audioContextRef.current.close();
+      audioContextRef.current = null;
     }
     
     // Clear canvas
@@ -129,6 +138,33 @@ export default function AudioVisualizer({ isActive }: AudioVisualizerProps) {
 
     renderFrame();
   };
+
+  if (isSimulated && isActive) {
+    return (
+      <div className="w-full h-20 flex items-center justify-center gap-1.5 overflow-hidden max-w-md mx-auto">
+        {[...Array(24)].map((_, i) => (
+          <div
+            key={i}
+            className="w-1.5 bg-blue-400 rounded-full animate-wave"
+            style={{
+              height: '8px',
+              animationDelay: `${i * 0.05}s`,
+              opacity: 0.3 + Math.random() * 0.7
+            }}
+          />
+        ))}
+        <style jsx>{`
+          @keyframes wave {
+            0%, 100% { height: 8px; }
+            50% { height: 32px; }
+          }
+          .animate-wave {
+            animation: wave 1s ease-in-out infinite;
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-20 flex items-center justify-center">
