@@ -30,7 +30,11 @@
     "sttNoSpeech": "No speech detected, please try again",
     "sttNetwork": "Network error, please check your connection",
     "sttNotAllowed": "Microphone access denied, please allow access in browser settings",
-    "sttError": "Recognition error: {error}"
+    "sttError": "Recognition error: {error}",
+    "categoryTodo": "To-do",
+    "categoryBeautiful": "Beautiful",
+    "categoryReflection": "Reflection",
+    "viewPast": "View Past"
   },
   "Categories": {
     "TODO": "To-do",

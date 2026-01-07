@@ -30,7 +30,11 @@
     "sttNoSpeech": "未检测到语音，请重试",
     "sttNetwork": "网络错误，请检查网络连接",
     "sttNotAllowed": "麦克风权限被拒绝，请在浏览器设置中允许麦克风访问",
-    "sttError": "识别错误: {error}"
+    "sttError": "识别错误: {error}",
+    "categoryTodo": "待办事情",
+    "categoryBeautiful": "美好事情",
+    "categoryReflection": "值得反思",
+    "viewPast": "查看过往"
   },
   "Categories": {
     "TODO": "待办事项",

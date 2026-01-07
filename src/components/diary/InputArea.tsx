@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Mic, ArrowUp } from 'lucide-react';
 import { useDiaryStore, Category } from '@/store/useDiaryStore';
+import { formatLocalDate, formatLocalTime } from '@/lib/date-utils';
 
 // 扩展 Window 接口以支持 Web Speech API
 declare global {
@@ -150,8 +151,8 @@ export default function InputArea() {
     const newEntry = {
       id: entryId,
       content: targetText,
-      time: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
-      date: now.toISOString().split('T')[0],
+      time: formatLocalTime(now),
+      date: formatLocalDate(now),
       category: defaultCategory,
       completed: targetText.toLowerCase().includes('todo') || targetText.includes('待办') ? false : undefined
     };
@@ -186,45 +187,71 @@ export default function InputArea() {
   };
 
   useEffect(() => {
-    if (!isSttActive && inputRef.current) {
-      inputRef.current.focus();
-    }
+    // 移除自动聚焦逻辑，以避免主动触发键盘
+    // if (!isSttActive && inputRef.current) {
+    //   inputRef.current.focus();
+    // }
   }, [isSttActive]);
 
   return (
-    <footer className="fixed bottom-0 w-full z-40 flex justify-center p-8 px-4">
+    <div className="w-full flex justify-center py-6 px-4">
       {!isSttActive ? (
-        <div className="w-full max-w-2xl glass rounded-[2.5rem] border border-slate-200/60 shadow-2xl flex items-end p-2 gap-2">
+        <div className={`
+          w-full max-w-2xl glass rounded-[2rem] border transition-all duration-500 flex flex-col p-2 gap-2
+          ${inputValue ? 'border-slate-300 shadow-[0_20px_50px_rgba(0,0,0,0.1)] scale-[1.02] bg-white ring-4 ring-slate-50' : 'border-slate-200/60 shadow-xl bg-white/50'}
+        `}>
           <textarea 
             ref={inputRef}
             rows={1}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              // Auto-resize textarea
+              if (inputRef.current) {
+                inputRef.current.style.height = 'auto';
+                inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+              }
+            }}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
             placeholder={t('placeholder')}
-            className="flex-1 bg-transparent border-none focus:outline-none px-6 py-4 text-sm resize-none hide-scrollbar max-h-32 text-slate-700 placeholder:text-slate-200"
+            className="flex-1 bg-transparent border-none focus:outline-none px-6 py-5 text-lg font-light leading-relaxed resize-none hide-scrollbar min-h-[80px] max-h-60 text-slate-700 placeholder:text-slate-300 transition-all"
           />
-          <div className="flex gap-2 p-2">
-            <button 
-              onClick={() => setIsSttActive(true)}
-              className="p-3 rounded-full text-slate-400 hover:bg-slate-50 transition-all active:scale-90"
-            >
-              <Mic className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => handleSend()}
-              className={`p-3 rounded-full transition-all active:scale-90 ${inputValue ? 'bg-slate-800 text-white shadow-lg' : 'bg-slate-50 text-slate-200 cursor-not-allowed'}`}
-            >
-              <ArrowUp className="w-5 h-5" />
-            </button>
+          <div className="flex justify-between items-center px-4 pb-2">
+            <div className="flex items-center gap-1">
+              <span className={`text-[10px] font-medium tracking-widest uppercase transition-opacity duration-300 ${inputValue ? 'text-slate-400 opacity-100' : 'opacity-0'}`}>
+                {inputValue.length} characters
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsSttActive(true)}
+                className="p-3 rounded-full text-slate-400 hover:bg-slate-100 hover:text-blue-500 transition-all active:scale-90"
+                title="Voice Input"
+              >
+                <Mic className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => handleSend()}
+                disabled={!inputValue.trim()}
+                className={`
+                  p-3 rounded-full transition-all duration-300 active:scale-90
+                  ${inputValue.trim() ? 'bg-slate-800 text-white shadow-lg rotate-0' : 'bg-slate-50 text-slate-200 cursor-not-allowed'}
+                `}
+              >
+                <ArrowUp className={`w-5 h-5 transition-transform duration-300 ${inputValue.trim() ? 'translate-y-0' : 'translate-y-1 opacity-50'}`} />
+              </button>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="w-full max-w-2xl glass rounded-[2.5rem] border border-blue-100 shadow-2xl p-6 flex flex-col gap-6">
+        <div className="w-full max-w-2xl glass rounded-[2.5rem] border border-blue-100 shadow-2xl p-10 flex flex-col gap-8 animate-in zoom-in-95 duration-300">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-blue-500 rounded-full pulse" />
-              <span className="text-xs font-bold text-blue-500 tracking-widest uppercase">{t('listening')}</span>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-4 h-4 bg-blue-500 rounded-full pulse" />
+                <div className="absolute inset-0 w-4 h-4 bg-blue-400 rounded-full animate-ping opacity-75" />
+              </div>
+              <span className="text-sm font-black text-blue-500 tracking-[0.3em] uppercase">{t('listening')}</span>
             </div>
             <button 
               onClick={() => {
@@ -232,29 +259,32 @@ export default function InputArea() {
                 setSttText('');
                 finalTranscriptRef.current = '';
               }}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
             >
               {t('cancel')}
             </button>
           </div>
           
-          <div className="min-h-[60px] flex items-center justify-center text-center">
-            <p className="text-lg font-light text-slate-700 font-serif leading-relaxed italic">
+          <div className="min-h-[120px] flex items-center justify-center text-center px-4">
+            <p className="text-2xl font-light text-slate-700 font-serif leading-relaxed italic">
               {sttText || t('sttInitial')}
             </p>
           </div>
 
-          <div className="flex justify-center gap-4 mt-2">
+          <div className="flex justify-center mt-4">
             <button 
               onClick={handleConfirmStt}
               disabled={!sttText}
-              className={`px-10 py-3 rounded-full text-sm font-bold transition-all active:scale-95 ${sttText ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}`}
+              className={`
+                px-16 py-4 rounded-full text-base font-bold transition-all active:scale-95
+                ${sttText ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'bg-slate-100 text-slate-300 cursor-not-allowed'}
+              `}
             >
               {t('sttFinish')}
             </button>
           </div>
         </div>
       )}
-    </footer>
+    </div>
   );
 }

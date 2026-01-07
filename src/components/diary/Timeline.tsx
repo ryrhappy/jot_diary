@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useDiaryStore } from '@/store/useDiaryStore';
-import { Trash2, Edit3, Check, X, AlertCircle } from 'lucide-react';
+import { useDiaryStore, Category } from '@/store/useDiaryStore';
+import { Trash2, Edit3, Check, X, AlertCircle, ListTodo, Sun, Brain } from 'lucide-react';
 
 export default function Timeline() {
   const t = useTranslations('Index');
   const locale = useLocale();
-  const { entries, deleteEntry, updateEntry } = useDiaryStore();
+  const { entries, deleteEntry, updateEntry, selectedCategory, setSelectedCategory } = useDiaryStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -16,6 +16,11 @@ export default function Timeline() {
   const today = new Date();
   const dateStr = today.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'long', day: 'numeric' });
   const weekday = today.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'long' });
+
+  const filteredEntries = useMemo(() => {
+    if (!selectedCategory) return entries;
+    return entries.filter(entry => entry.category === selectedCategory);
+  }, [entries, selectedCategory]);
 
   const handleEdit = (id: string, content: string) => {
     setEditingId(id);
@@ -33,6 +38,12 @@ export default function Timeline() {
     deleteEntry(id);
     setDeleteConfirmId(null);
   };
+
+  const categories = [
+    { id: 'TODO' as Category, icon: ListTodo, label: t('categoryTodo'), color: 'text-orange-500', bg: 'bg-orange-50' },
+    { id: 'BEAUTIFUL' as Category, icon: Sun, label: t('categoryBeautiful'), color: 'text-yellow-500', bg: 'bg-yellow-50' },
+    { id: 'REFLECTION' as Category, icon: Brain, label: t('categoryReflection'), color: 'text-purple-500', bg: 'bg-purple-50' },
+  ];
 
   return (
     <div className="animate-in">
@@ -68,21 +79,42 @@ export default function Timeline() {
         </div>
       )}
 
-      {/* Date Display */}
-      <div className="mb-16 text-center md:text-left flex flex-col md:flex-row md:items-baseline gap-4 pt-12">
-        <span className="text-6xl md:text-7xl font-light font-serif text-slate-200 leading-none">
-          {today.getDate().toString().padStart(2, '0')}
-        </span>
-        <div className="flex flex-col">
-          <span className="text-xl font-bold text-slate-800">{dateStr}</span>
-          <span className="text-sm font-medium text-slate-300 tracking-[0.2em] uppercase">{weekday}</span>
+      {/* Sticky Date and Categories */}
+      <div className="sticky top-20 z-30 bg-white/80 backdrop-blur-md py-6 mb-8 border-b border-slate-100 -mx-6 px-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-baseline gap-4">
+            <span className="text-5xl font-light font-serif text-slate-200 leading-none">
+              {today.getDate().toString().padStart(2, '0')}
+            </span>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-slate-800">{dateStr}</span>
+              <span className="text-xs font-medium text-slate-300 tracking-[0.2em] uppercase">{weekday}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  selectedCategory === cat.id 
+                    ? `${cat.bg} ${cat.color} ring-1 ring-current shadow-sm` 
+                    : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                }`}
+              >
+                <cat.icon className="w-3.5 h-3.5" />
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="relative">
         <div className="timeline-line hidden md:block"></div>
-        <div className="flex flex-col gap-16">
-          {entries.map((entry) => (
+        <div className="flex flex-col gap-12">
+          {filteredEntries.map((entry) => (
             <div key={entry.id} className="flex flex-col md:flex-row gap-4 md:gap-0 group">
               <div className="md:w-32 flex-shrink-0 pt-1 flex flex-col gap-2">
                 <span className="text-xs font-medium text-slate-300 tracking-wider group-hover:text-slate-400 transition-colors">

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { formatLocalDate } from '@/lib/date-utils';
 
 export type Category = 'TODO' | 'DREAM' | 'BEAUTIFUL' | 'REFLECTION' | 'GRATITUDE' | 'NORMAL';
 
@@ -16,8 +17,9 @@ export interface DiaryEntry {
 interface DiaryState {
   entries: DiaryEntry[];
   loading: boolean;
-  view: 'timeline' | 'categories' | 'search';
+  view: 'timeline' | 'categories' | 'search' | 'archive';
   selectedCategory: Category | null;
+  archiveDate: string; // YYYY-MM-DD
   searchQuery: string;
   isAiMode: boolean;
   isDrawerOpen: boolean;
@@ -29,8 +31,9 @@ interface DiaryState {
   addEntry: (entry: DiaryEntry) => Promise<void>;
   updateEntry: (id: string, updates: Partial<DiaryEntry>) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
-  setView: (view: 'timeline' | 'categories' | 'search') => void;
+  setView: (view: 'timeline' | 'categories' | 'search' | 'archive') => void;
   setSelectedCategory: (category: Category | null) => void;
+  setArchiveDate: (date: string) => void;
   setSearchQuery: (query: string) => void;
   setIsAiMode: (isAiMode: boolean) => void;
   setIsDrawerOpen: (isOpen: boolean) => void;
@@ -43,6 +46,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
   loading: false,
   view: 'timeline',
   selectedCategory: null,
+  archiveDate: formatLocalDate(new Date()),
   searchQuery: '',
   isAiMode: false,
   isDrawerOpen: false,
@@ -160,6 +164,7 @@ export const useDiaryStore = create<DiaryState>((set, get) => ({
 
   setView: (view) => set({ view }),
   setSelectedCategory: (category) => set({ selectedCategory: category }),
+  setArchiveDate: (date) => set({ archiveDate: date }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setIsAiMode: (isAiMode) => set({ isAiMode }),
   setIsDrawerOpen: (isOpen) => set({ isDrawerOpen: isOpen }),
