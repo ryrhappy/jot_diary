@@ -10,6 +10,7 @@
     "settings": "Settings",
     "exportMd": "Export Markdown",
     "exportTxt": "Export Text",
+    "pricing": "Pricing",
     "listening": "Listening...",
     "cancel": "Cancel",
     "save": "Save",
@@ -34,7 +35,8 @@
     "categoryTodo": "To-do",
     "categoryBeautiful": "Beautiful",
     "categoryReflection": "Reflection",
-    "viewPast": "View Past"
+    "viewPast": "View Past",
+    "pricing": "Pricing"
   },
   "Categories": {
     "TODO": "To-do",
@@ -86,6 +88,45 @@
     "language": "Language",
     "chinese": "Chinese",
     "english": "English"
+  },
+  "Pricing": {
+    "title": "Choose Your Plan",
+    "description": "Unlock more features and enhance your diary experience",
+    "back": "Back",
+    "freePlan": "Free",
+    "proPlan": "Pro",
+    "premiumPlan": "Premium",
+    "freePrice": "Free",
+    "proPrice": "$9",
+    "premiumPrice": "$19",
+    "perMonth": "/month",
+    "mostPopular": "Most Popular",
+    "currentPlan": "Current Plan",
+    "upgradeNow": "Upgrade Now",
+    "featureBasic": "Basic diary features",
+    "featureCategories": "Auto categorization",
+    "featureSearch": "Search & filter",
+    "featureExport": "Export to Markdown/TXT",
+    "featureLimit": "Up to {count} entries",
+    "featureUnlimited": "Unlimited entries",
+    "featureAI": "AI-powered insights",
+    "featureAdvanced": "Advanced search & analytics",
+    "featurePriority": "Priority support",
+    "featureSupport": "Email support",
+    "featureAllPro": "All Pro features",
+    "featureCustom": "Custom categories & tags",
+    "featureAPI": "API access",
+    "featureDedicated": "Dedicated support",
+    "featureEarly": "Early access to new features",
+    "faqTitle": "Frequently Asked Questions",
+    "faq1Q": "Can I switch plans later?",
+    "faq1A": "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.",
+    "faq2Q": "What payment methods do you accept?",
+    "faq2A": "We accept all major credit cards, PayPal, and other secure payment methods.",
+    "faq3Q": "Is there a free trial?",
+    "faq3A": "Yes, all paid plans come with a 14-day free trial. No credit card required.",
+    "faq4Q": "What happens to my data if I cancel?",
+    "faq4A": "Your data will remain accessible for 30 days after cancellation. You can export all your data at any time."
   }
 }
 

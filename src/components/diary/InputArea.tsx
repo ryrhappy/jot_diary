@@ -293,12 +293,7 @@ export default function InputArea() {
             placeholder={t('placeholder')}
             className="flex-1 bg-transparent border-none focus:outline-none px-6 py-5 text-lg font-light leading-relaxed resize-none hide-scrollbar min-h-[80px] max-h-60 text-slate-700 placeholder:text-slate-300 transition-all"
           />
-          <div className="flex justify-between items-center px-4 pb-2">
-            <div className="flex items-center gap-1">
-              <span className={`text-[10px] font-medium tracking-widest uppercase transition-opacity duration-300 ${inputValue ? 'text-slate-400 opacity-100' : 'opacity-0'}`}>
-                {inputValue.length} characters
-              </span>
-            </div>
+          <div className="flex justify-end items-center px-4 pb-2">
             <div className="flex gap-2">
               <button 
                 onClick={handleStartSTT}

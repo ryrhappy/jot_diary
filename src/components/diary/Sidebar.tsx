@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import { X, Feather, FileDown, FileText, Settings2, Cloud, Languages } from 'lucide-react';
+import { X, Feather, FileDown, FileText, Settings2, Cloud, Languages, Crown } from 'lucide-react';
 import { useDiaryStore } from '@/store/useDiaryStore';
 import { useRouter, usePathname } from '@/i18n/routing';
 
@@ -105,6 +105,20 @@ export default function Sidebar() {
                   </button>
                 </div>
               </div>
+
+              <button
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  router.push('/pricing');
+                }}
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl group hover:from-blue-100 hover:to-indigo-100 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700 group-hover:text-blue-800">{t('pricing')}</span>
+                </div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              </button>
             </div>
           </section>
         </div>
