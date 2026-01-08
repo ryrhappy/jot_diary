@@ -76,7 +76,10 @@
     "signupSuccess": "注册成功！请使用您的邮箱和密码登录。",
     "resetSuccess": "重置密码邮件已发送，请检查您的邮箱",
     "operationError": "操作失败，请稍后重试",
-    "signout": "登出"
+    "signout": "登出",
+    "signInWithGoogle": "使用 Google 登录",
+    "googleSignInError": "Google 登录失败，请稍后重试",
+    "orContinueWith": "或使用以下方式继续"
   },
   "Welcome": {
     "title": "欢迎使用 Jot Diary",

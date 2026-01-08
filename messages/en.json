@@ -77,7 +77,10 @@
     "signupSuccess": "Sign up successful! Please sign in with your email and password.",
     "resetSuccess": "Password reset email sent, please check your inbox",
     "operationError": "Operation failed, please try again later",
-    "signout": "Sign Out"
+    "signout": "Sign Out",
+    "signInWithGoogle": "Continue with Google",
+    "googleSignInError": "Google sign in failed, please try again later",
+    "orContinueWith": "Or continue with"
   },
   "Welcome": {
     "title": "Welcome to Jot Diary",

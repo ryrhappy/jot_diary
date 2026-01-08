@@ -12,6 +12,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
@@ -97,6 +98,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: data.user ?? null,
         session: data.session
       });
+      
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  },
+
+  /**
+   * Sign in with Google OAuth
+   */
+  signInWithGoogle: async () => {
+    try {
+      // 获取当前 locale 或使用默认 locale
+      const locale = window.location.pathname.split('/')[1] || 'en';
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/${locale}/auth/callback`,
+        },
+      });
+      
+      if (error) {
+        return { error };
+      }
       
       return { error: null };
     } catch (err) {
