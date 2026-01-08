@@ -27,6 +27,7 @@ export default function InputArea() {
   const t = useTranslations('Index');
   const locale = useLocale();
   const [inputValue, setInputValue] = useState('');
+  const [sttError, setSttError] = useState<string | null>(null);
   const { 
     addEntry, 
     updateEntry,
@@ -45,18 +46,19 @@ export default function InputArea() {
   };
 
   const startSTT = () => {
+    setSttError(null);
     // 检查是否在安全上下文中（移动端录音必须要求 HTTPS）
     if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      alert('语音识别需要 HTTPS 安全连接才能在手机上使用。如果您在本地测试，请确保通过 localhost 访问。');
-      setIsSttActive(false);
+      const msg = '语音识别需要 HTTPS 安全连接才能在手机上使用。如果您在本地测试，请确保通过 localhost 访问。';
+      setSttError(msg);
+      // alert(msg); // 保持 modal 显示错误
       return;
     }
 
     // Check if browser supports Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert(t('sttNotSupported'));
-      setIsSttActive(false);
+      setSttError(t('sttNotSupported'));
       return;
     }
 
@@ -66,14 +68,20 @@ export default function InputArea() {
 
     // 配置识别参数
     recognition.lang = locale === 'zh' ? 'zh-CN' : 'en-US';
-    // 在移动端 Safari 上，continuous 可能导致识别过快停止，但在 Chrome 上表现良好
-    recognition.continuous = true;
+    
+    // 针对移动端 Safari 的优化
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    
+    // 在移动端 Safari 上，continuous 可能导致识别过快停止
+    recognition.continuous = !isSafari;
     recognition.interimResults = true;
 
     recognition.onstart = () => {
       console.log('语音识别已开始');
       setSttText('');
       finalTranscriptRef.current = '';
+      setSttError(null);
     };
 
     recognition.onresult = (event: any) => {
@@ -100,35 +108,34 @@ export default function InputArea() {
 
     recognition.onerror = (event: any) => {
       console.error('语音识别错误:', event.error);
+      let errorMsg = '';
       if (event.error === 'no-speech') {
-        setSttText(t('sttNoSpeech'));
+        errorMsg = t('sttNoSpeech');
       } else if (event.error === 'network') {
-        setSttText(t('sttNetwork'));
+        errorMsg = t('sttNetwork');
       } else if (event.error === 'not-allowed') {
-        // 针对 NotAllowedError 给出更详细的引导
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const detailMessage = isIOS 
-          ? '麦克风权限被拒绝。请点击浏览器地址栏左侧的“大小”或“AA”图标，选择“网站设置”，然后允许麦克风访问。'
+        errorMsg = isIOS 
+          ? '麦克风权限被拒绝。请点击浏览器地址栏左侧的图标，进入“网站设置”允许麦克风访问。'
           : t('sttNotAllowed');
-        setSttText(detailMessage);
+      } else if (event.error === 'service-not-allowed') {
+        errorMsg = '识别服务暂不可用。请确保已连接网络，或尝试更换浏览器（推荐 Chrome）。';
       } else {
-        setSttText(t('sttError', { error: event.error }));
+        errorMsg = t('sttError', { error: event.error });
       }
-      setIsSttActive(false);
+      setSttError(errorMsg);
+      // 不要立即关闭，让用户看清错误
+      // setIsSttActive(false); 
     };
 
     recognition.onend = () => {
       console.log('Speech recognition ended');
-      // If the user hasn't manually stopped, it might be a timeout, can choose to auto-restart
-      // Here we let the user control it manually
     };
 
     try {
       recognition.start();
     } catch (err) {
       console.error('Failed to start speech recognition:', err);
-      setSttText(t('sttError', { error: 'Failed to start' }));
-      setIsSttActive(false);
+      setSttError(t('sttError', { error: 'Failed to start' }));
     }
   };
 
@@ -144,12 +151,11 @@ export default function InputArea() {
   };
 
   const handleStartSTT = () => {
+    setSttText('');
+    setSttError(null);
     setIsSttActive(true);
-    // 延迟一小会儿启动识别，确保状态已更新且 DOM 准备就绪
-    // 但必须保持在同一个用户交互链中
-    setTimeout(() => {
-      startSTT();
-    }, 50);
+    // 立即启动识别，确保在同一个用户交互链中
+    startSTT();
   };
 
   useEffect(() => {
@@ -204,9 +210,11 @@ export default function InputArea() {
   };
 
   const handleConfirmStt = () => {
+    stopSTT();
     setInputValue(sttText);
     setIsSttActive(false);
     setSttText('');
+    setSttError(null);
     finalTranscriptRef.current = '';
   };
 
@@ -281,8 +289,10 @@ export default function InputArea() {
               </div>
               <button 
                 onClick={() => {
+                  stopSTT();
                   setIsSttActive(false);
                   setSttText('');
+                  setSttError(null);
                   finalTranscriptRef.current = '';
                 }}
                 className="group p-2 rounded-full hover:bg-white/80 transition-all active:scale-90"
@@ -294,13 +304,27 @@ export default function InputArea() {
             
             {/* Visualization Area */}
             <div className="flex flex-col items-center justify-center gap-6 py-4">
-              <AudioVisualizer isActive={isSttActive} isSimulated={true} />
+              <AudioVisualizer isActive={isSttActive && !sttError} isSimulated={true} />
               
-              <div className="w-full min-h-[140px] flex items-center justify-center text-center px-4 transition-all duration-300">
-                <p className={`text-2xl md:text-3xl font-light leading-relaxed tracking-tight ${sttText ? 'text-slate-800' : 'text-slate-300'}`}>
-                  {sttText || t('sttInitial')}
-                  {isSttActive && <span className="inline-block w-1 h-8 ml-1 bg-blue-400 animate-pulse align-middle" />}
-                </p>
+              <div className="w-full min-h-[140px] flex flex-col items-center justify-center text-center px-4 transition-all duration-300">
+                {sttError ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <p className="text-lg md:text-xl font-medium text-red-500 max-w-md">
+                      {sttError}
+                    </p>
+                    <button 
+                      onClick={handleStartSTT}
+                      className="text-blue-500 hover:text-blue-600 font-medium px-4 py-2 rounded-full bg-blue-50 hover:bg-blue-100 transition-all"
+                    >
+                      点击重试
+                    </button>
+                  </div>
+                ) : (
+                  <p className={`text-2xl md:text-3xl font-light leading-relaxed tracking-tight ${sttText ? 'text-slate-800' : 'text-slate-300'}`}>
+                    {sttText || t('sttInitial')}
+                    {isSttActive && <span className="inline-block w-1 h-8 ml-1 bg-blue-400 animate-pulse align-middle" />}
+                  </p>
+                )}
               </div>
             </div>
 
