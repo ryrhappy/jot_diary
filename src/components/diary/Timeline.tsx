@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useDiaryStore, Category } from '@/store/useDiaryStore';
+import { useDiaryStore, Category, DiaryEntry } from '@/store/useDiaryStore';
 import { Trash2, Edit3, Check, X, AlertCircle, ListTodo, Sun, Brain } from 'lucide-react';
 
 export default function Timeline() {
@@ -22,6 +22,31 @@ export default function Timeline() {
     return entries.filter(entry => entry.category === selectedCategory);
   }, [entries, selectedCategory]);
 
+  // 统计各分类的数量
+  const categoryCounts = useMemo(() => {
+    const counts: Record<Category, number> = {
+      TODO: 0,
+      DREAM: 0,
+      BEAUTIFUL: 0,
+      REFLECTION: 0,
+      GRATITUDE: 0,
+      NORMAL: 0
+    };
+    
+    entries.forEach(entry => {
+      if (entry.category === 'TODO') {
+        // TODO 只统计未完成的
+        if (!entry.completed) {
+          counts.TODO++;
+        }
+      } else {
+        counts[entry.category]++;
+      }
+    });
+    
+    return counts;
+  }, [entries]);
+
   const handleEdit = (id: string, content: string) => {
     setEditingId(id);
     setEditContent(content);
@@ -37,6 +62,12 @@ export default function Timeline() {
   const confirmDelete = (id: string) => {
     deleteEntry(id);
     setDeleteConfirmId(null);
+  };
+
+  const handleToggleComplete = (entry: DiaryEntry) => {
+    if (entry.category === 'TODO') {
+      updateEntry(entry.id, { completed: !entry.completed });
+    }
   };
 
   const categories = [
@@ -104,7 +135,16 @@ export default function Timeline() {
                 }`}
               >
                 <cat.icon className="w-3.5 h-3.5" />
-                {cat.label}
+                <span>{cat.label}</span>
+                {categoryCounts[cat.id] > 0 && (
+                  <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedCategory === cat.id 
+                      ? 'bg-white/30' 
+                      : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {categoryCounts[cat.id]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -148,18 +188,42 @@ export default function Timeline() {
                   </div>
                 ) : (
                   <>
-                    <p className={`text-[15px] leading-relaxed text-slate-600 font-normal whitespace-pre-wrap pr-16 ${entry.completed ? 'line-through opacity-60' : ''}`}>
-                      {entry.content}
-                    </p>
+                    <div 
+                      className={`relative ${entry.category === 'TODO' ? 'cursor-pointer' : ''}`}
+                      onClick={() => entry.category === 'TODO' && handleToggleComplete(entry)}
+                    >
+                      <p className={`text-[15px] leading-relaxed text-slate-600 font-normal whitespace-pre-wrap pr-16 ${entry.completed ? 'line-through opacity-60' : ''}`}>
+                        {entry.content}
+                      </p>
+                      {entry.category === 'TODO' && (
+                        <div className="absolute -left-6 top-0 flex items-center h-full">
+                          <div className={`w-4 h-4 rounded-full border-2 transition-all ${
+                            entry.completed 
+                              ? 'bg-green-500 border-green-500' 
+                              : 'border-orange-300 hover:border-orange-400'
+                          }`}>
+                            {entry.completed && (
+                              <Check className="w-3 h-3 text-white m-0.5" />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <div className="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => handleEdit(entry.id, entry.content)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(entry.id, entry.content);
+                        }}
                         className="p-2 rounded-full text-slate-300 hover:text-slate-600 hover:bg-slate-50 transition-all"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => setDeleteConfirmId(entry.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(entry.id);
+                        }}
                         className="p-2 rounded-full text-slate-300 hover:text-red-400 hover:bg-red-50 transition-all"
                       >
                         <Trash2 className="w-4 h-4" />

@@ -302,7 +302,7 @@ export default function InputArea() {
             <div className="flex gap-2">
               <button 
                 onClick={handleStartSTT}
-                className="p-3 rounded-full text-slate-400 hover:bg-slate-100 hover:text-blue-500 transition-all active:scale-90"
+                className="hidden p-3 rounded-full text-slate-400 hover:bg-slate-100 hover:text-blue-500 transition-all active:scale-90"
                 title="Voice Input"
               >
                 <Mic className="w-5 h-5" />
