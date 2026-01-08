@@ -28,6 +28,7 @@ export default function InputArea() {
   const locale = useLocale();
   const [inputValue, setInputValue] = useState('');
   const [sttError, setSttError] = useState<string | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
   const { 
     addEntry, 
     updateEntry,
@@ -37,6 +38,13 @@ export default function InputArea() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const finalTranscriptRef = useRef<string>('');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const autoTag = (text: string): Category => {
     for (const [key, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -48,10 +56,12 @@ export default function InputArea() {
   const startSTT = () => {
     setSttError(null);
     // 检查是否在安全上下文中（移动端录音必须要求 HTTPS）
-    if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      const msg = '语音识别需要 HTTPS 安全连接才能在手机上使用。如果您在本地测试，请确保通过 localhost 访问。';
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isSecure = window.isSecureContext || window.location.protocol === 'https:';
+
+    if (!isLocalhost && !isSecure) {
+      const msg = '语音识别需要 HTTPS 安全连接才能在手机上使用。请确保通过 https:// 访问您的网站。';
       setSttError(msg);
-      // alert(msg); // 保持 modal 显示错误
       return;
     }
 
@@ -69,10 +79,17 @@ export default function InputArea() {
     // 配置识别参数
     recognition.lang = locale === 'zh' ? 'zh-CN' : 'en-US';
     
-    // 针对移动端 Safari 的优化
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    // 针对移动端和浏览器的优化
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /ipad|iphone|ipod/.test(ua);
+    const isWeChat = /micromessenger/.test(ua);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua) || (isIOS && !/chrome|crios|fxios|edgios/i.test(ua));
     
+    if (isWeChat) {
+      setSttError('微信内置浏览器不支持语音识别，请点击右上角选择“在浏览器中打开”。');
+      return;
+    }
+
     // 在移动端 Safari 上，continuous 可能导致识别过快停止
     recognition.continuous = !isSafari;
     recognition.interimResults = true;
@@ -108,6 +125,7 @@ export default function InputArea() {
 
     recognition.onerror = (event: any) => {
       console.error('语音识别错误:', event.error);
+      stopSTT(); // 出错时停止识别和计时器
       let errorMsg = '';
       if (event.error === 'no-speech') {
         errorMsg = t('sttNoSpeech');
@@ -129,17 +147,35 @@ export default function InputArea() {
 
     recognition.onend = () => {
       console.log('Speech recognition ended');
+      stopSTT(); // 确保计时器在识别结束时停止
+      // 如果识别结束了，但既没有错误也没有文字，且面板还是激活状态，说明可能被系统自动中断了
+      // 这在移动端锁屏或切后台时很常见
     };
 
     try {
+      console.log('正在尝试启动语音识别...');
       recognition.start();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to start speech recognition:', err);
-      setSttError(t('sttError', { error: 'Failed to start' }));
+      if (err.name === 'InvalidStateError') {
+        // 说明已经有一个在运行了，先停止再试
+        try {
+          recognition.stop();
+          setTimeout(() => recognition.start(), 100);
+        } catch (e) {
+          setSttError('识别服务忙，请刷新页面重试');
+        }
+      } else {
+        setSttError(t('sttError', { error: err.message || 'Failed to start' }));
+      }
     }
   };
 
   const stopSTT = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -153,7 +189,15 @@ export default function InputArea() {
   const handleStartSTT = () => {
     setSttText('');
     setSttError(null);
+    setRecordingTime(0);
     setIsSttActive(true);
+    
+    // 启动计时器
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setRecordingTime(prev => prev + 1);
+    }, 1000);
+
     // 立即启动识别，确保在同一个用户交互链中
     startSTT();
   };
@@ -215,6 +259,7 @@ export default function InputArea() {
     setIsSttActive(false);
     setSttText('');
     setSttError(null);
+    setRecordingTime(0);
     finalTranscriptRef.current = '';
   };
 
@@ -285,7 +330,10 @@ export default function InputArea() {
                   <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
                   <div className="absolute w-6 h-6 border-2 border-blue-200 rounded-full animate-ping opacity-20" />
                 </div>
-                <span className="text-xs font-bold text-blue-500 tracking-[0.4em] uppercase">{t('listening')}</span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-blue-500 tracking-[0.4em] uppercase">{t('listening')}</span>
+                  <span className="text-[10px] font-mono text-blue-400 font-medium">{formatDuration(recordingTime)}</span>
+                </div>
               </div>
               <button 
                 onClick={() => {
@@ -293,6 +341,7 @@ export default function InputArea() {
                   setIsSttActive(false);
                   setSttText('');
                   setSttError(null);
+                  setRecordingTime(0);
                   finalTranscriptRef.current = '';
                 }}
                 className="group p-2 rounded-full hover:bg-white/80 transition-all active:scale-90"

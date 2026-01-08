@@ -24,7 +24,7 @@
     "completed": "Completed",
     "pending": "Pending",
     "entryCount": "{count} entries",
-    "sttNotSupported": "Your browser does not support speech recognition. Please use Chrome or Edge.",
+    "sttNotSupported": "Your browser does not support speech recognition. Chrome is recommended for Android, and Safari for iOS. WeChat browser is not supported.",
     "sttInitial": "Listening...",
     "sttFinish": "Finish",
     "sttNoSpeech": "No speech detected, please try again",

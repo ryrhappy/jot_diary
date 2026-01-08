@@ -24,7 +24,7 @@
     "completed": "已完成",
     "pending": "待完成",
     "entryCount": "{count} 条记录",
-    "sttNotSupported": "您的浏览器不支持语音识别，请使用 Chrome 或 Edge 浏览器",
+    "sttNotSupported": "您的浏览器不支持语音识别。安卓推荐使用 Chrome，iOS 推荐使用 Safari。不支持微信内置浏览器。",
     "sttInitial": "正在倾听...",
     "sttFinish": "完成转文字",
     "sttNoSpeech": "未检测到语音，请重试",
