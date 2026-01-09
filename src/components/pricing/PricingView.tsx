@@ -1,13 +1,47 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/routing';
-import { Check, Sparkles, Crown, Zap, ArrowLeft } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Check, Sparkles, Crown, Zap, ArrowLeft, Loader2 } from 'lucide-react';
 import Header from '@/components/diary/Header';
+import { useAuthStore } from '@/store/useAuthStore';
+import AuthModal from '@/components/auth/AuthModal';
+
+// Creem产品ID映射（需要在Creem控制台创建产品后配置）
+const CREEM_PRODUCT_IDS: Record<string, string> = {
+  pro: process.env.NEXT_PUBLIC_CREEM_PRODUCT_ID_PRO || '',
+};
 
 export default function PricingView() {
   const t = useTranslations('Pricing');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, session, initialize } = useAuthStore();
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // 检查支付回调参数
+  useEffect(() => {
+    const success = searchParams?.get('success');
+    const canceled = searchParams?.get('canceled');
+    
+    if (success === 'true') {
+      // 支付成功，可以显示成功消息或跳转
+      setError(null);
+      // 可以在这里刷新用户订阅状态
+    } else if (canceled === 'true') {
+      setError('支付已取消');
+    }
+  }, [searchParams]);
+
+  // 初始化认证状态
+  useEffect(() => {
+    if (!user) {
+      initialize();
+    }
+  }, [user, initialize]);
 
   const plans = [
     {
@@ -43,35 +77,90 @@ export default function PricingView() {
       buttonText: t('upgradeNow'),
       buttonStyle: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30',
       popular: true
-    },
-    {
-      id: 'premium',
-      name: t('premiumPlan'),
-      price: t('premiumPrice'),
-      period: t('perMonth'),
-      icon: Zap,
-      features: [
-        t('featureAllPro'),
-        t('featureCustom'),
-        t('featureAPI'),
-        t('featureDedicated'),
-        t('featureEarly')
-      ],
-      buttonText: t('upgradeNow'),
-      buttonStyle: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30',
-      popular: false
     }
   ];
 
-  const handleUpgrade = (planId: string) => {
-    // TODO: 实现支付逻辑
-    console.log('Upgrading to:', planId);
-    // 这里可以集成 Stripe、支付宝、微信支付等
+  /**
+   * 处理升级/支付
+   */
+  const handleUpgrade = async (planId: string) => {
+    // 检查用户是否登录
+    if (!user || !session) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    // 获取产品ID
+    const productId = CREEM_PRODUCT_IDS[planId];
+    if (!productId) {
+      setError('产品配置错误，请联系客服');
+      return;
+    }
+
+    setLoading(planId);
+    setError(null);
+
+    try {
+      // 获取访问令牌
+      const token = session.access_token;
+      
+      // 调用API创建支付会话
+      const response = await fetch('/api/creem/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          productId,
+          planId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || '创建支付会话失败');
+      }
+
+      // 跳转到Creem支付页面
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error('未获取到支付链接');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : '支付处理失败，请稍后重试');
+      setLoading(null);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Header />
+      
+      {/* 错误提示 */}
+      {error && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-md">
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-lg">
+            <p className="text-sm">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="mt-2 text-xs underline hover:no-underline"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 认证模态框 */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        defaultMode="signin"
+      />
       
       <div className="pt-24 pb-16 px-4">
         <div className="max-w-6xl mx-auto">
@@ -94,7 +183,7 @@ export default function PricingView() {
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 max-w-4xl mx-auto">
             {plans.map((plan) => {
               const Icon = plan.icon;
               return (
@@ -151,14 +240,22 @@ export default function PricingView() {
 
                   <button
                     onClick={() => handleUpgrade(plan.id)}
-                    disabled={plan.id === 'free'}
+                    disabled={plan.id === 'free' || loading === plan.id}
                     className={`
                       w-full py-4 rounded-2xl font-medium transition-all duration-300
                       ${plan.buttonStyle}
-                      ${plan.id !== 'free' ? 'active:scale-95' : ''}
+                      ${plan.id !== 'free' && loading !== plan.id ? 'active:scale-95' : ''}
+                      ${loading === plan.id ? 'opacity-75 cursor-wait' : ''}
                     `}
                   >
-                    {plan.buttonText}
+                    {loading === plan.id ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t('processing')}
+                      </span>
+                    ) : (
+                      plan.buttonText
+                    )}
                   </button>
                 </div>
               );

@@ -129,7 +129,8 @@
     "faq3Q": "Is there a free trial?",
     "faq3A": "Yes, all paid plans come with a 14-day free trial. No credit card required.",
     "faq4Q": "What happens to my data if I cancel?",
-    "faq4A": "Your data will remain accessible for 30 days after cancellation. You can export all your data at any time."
+    "faq4A": "Your data will remain accessible for 30 days after cancellation. You can export all your data at any time.",
+    "processing": "Processing..."
   }
 }
 
